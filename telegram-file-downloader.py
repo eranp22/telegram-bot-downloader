@@ -19,7 +19,7 @@ FILE_BASE_URL = f"http://localhost:8081/file/bot{BOT_TOKEN}/"
 # Logging configuration
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s",
+    format="%(asctime)s - %(levelname)s - %(message)s"
     handlers=[
         logging.FileHandler("bot.log", encoding="utf-8"),
         logging.StreamHandler()
@@ -103,7 +103,11 @@ async def download_file(session, file_id):
             
             # Check if the response is valid
             if resp.status != 200:
-                raise Exception(f"Download failed: HTTP {resp.status}")
+                # raise Exception(f"Download failed: HTTP {resp.status}")
+                # check if the file local_filename exists on the server
+                if not os.path.exists(local_filename):
+                    logging.error(f"❌ Download failed: HTTP {resp.status} - File not found on server.")
+                    raise Exception(f"Download failed: HTTP {resp.status}")
             
             # Proceed with download
             with open(local_filename, "wb") as f:
