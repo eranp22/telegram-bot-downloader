@@ -19,7 +19,7 @@ FILE_BASE_URL = f"http://localhost:8081/file/bot{BOT_TOKEN}/"
 # Logging configuration
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s"
+    format="%(asctime)s - %(levelname)s - %(message)s",
     handlers=[
         logging.FileHandler("bot.log", encoding="utf-8"),
         logging.StreamHandler()
