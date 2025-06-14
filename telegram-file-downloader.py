@@ -2,19 +2,17 @@ import os
 import logging
 import asyncio
 import aiohttp
+import shutil  # Import shutil for file moving
 from dotenv import load_dotenv
 
 # Load environment variables
 load_dotenv()
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
-DOWNLOAD_FOLDER = os.getenv("DOWNLOAD_FOLDER", "/videos")  # Path inside Docker volume
 OWNER_ID = os.getenv("OWNER_ID")  # Optional
 BASE_URL = f"http://localhost:8081/bot{BOT_TOKEN}/"
 FILE_BASE_URL = f"http://localhost:8081/file/bot{BOT_TOKEN}/"
 
-# Ensure download folder exists
-#os.makedirs(DOWNLOAD_FOLDER, exist_ok=True)
 
 # Logging configuration
 logging.basicConfig(
@@ -62,6 +60,7 @@ async def get_file_info(session, file_id):
         logging.error(f"Error calling getFile: {e}")
         return None
 
+
 async def download_file(session, file_id):
     """
     Download a file from the Telegram Bot API using the file path.
@@ -87,27 +86,40 @@ async def download_file(session, file_id):
     if not resolved_bot_token:
         logging.error("❌ BOT_TOKEN is invalid or missing.")
         return None
-
-    # Update local filename to use VOLUME_SOURCE\\resolved_bot_token\\videos
     sanitized_token = "".join(c if c.isalnum() else "_" for c in BOT_TOKEN)
+
     sanitized_filename = os.path.basename(file_path_api).replace(":", "_").replace("\\", "_").replace("/", "_")
     volume_source = os.getenv("VOLUME_SOURCE").replace("/", "\\")
 
     local_filename = os.path.join(volume_source, sanitized_token, "videos", sanitized_filename)
+    main_folder = os.path.join(volume_source, sanitized_token, "videos")
+    logging.info(f"📂 Main folder: {main_folder}")
+
+    print(f"Local filename: {local_filename}")
     os.makedirs(os.path.dirname(local_filename), exist_ok=True)
+
+    # Check if the file already exists locally
+    if os.path.exists(local_filename):
+        logging.info(f"✅ File already exists: {local_filename}")
+        await send_message(session, OWNER_ID, f"✅ File already exists: {local_filename}") if OWNER_ID else None
+        
     
     try:
+        # Validate the file URL before proceeding
         async with session.get(file_url) as resp:
             # Log the HTTP status code for debugging
             logging.info(f"HTTP status code: {resp.status}")
             
+            # Handle HTTP 404 gracefully if the file exists locally
+            if resp.status == 404:
+                logging.warning(f"⚠️ File URL expired, but file exists locally: {local_filename}")
+                await send_message(session, OWNER_ID, f"⚠️ File URL expired, but file exists locally") if OWNER_ID else None
+                return local_filename
+            
             # Check if the response is valid
             if resp.status != 200:
-                # raise Exception(f"Download failed: HTTP {resp.status}")
-                # check if the file local_filename exists on the server
-                if not os.path.exists(local_filename):
-                    logging.error(f"❌ Download failed: HTTP {resp.status} - File not found on server.")
-                    raise Exception(f"Download failed: HTTP {resp.status}")
+                logging.error(f"❌ Download failed: HTTP {resp.status} - File not found on server.")
+                return None
             
             # Proceed with download
             with open(local_filename, "wb") as f:
@@ -118,9 +130,14 @@ async def download_file(session, file_id):
                     f.write(chunk)
         logging.info(f"✅ Downloaded: {local_filename}")
         if OWNER_ID:
-            await send_message(session, OWNER_ID, f"✅ File downloaded: {local_filename}")        
+            await send_message(session, OWNER_ID, f"✅ File downloaded: {local_filename}")
         
+        # Move the file to volume source after download
+
         return local_filename
+    except aiohttp.ClientError as e:
+        logging.error(f"❌ Network error while downloading file: {e}")
+        return None
     except Exception as e:
         logging.error(f"Download error: {e}")
         return None
@@ -159,6 +176,7 @@ async def process_updates(session, updates):
 
         if "video" in message:
             file_id = message["video"].get("file_id")
+            
         elif "document" in message:
             file_id = message["document"].get("file_id")
 
@@ -172,6 +190,7 @@ async def process_updates(session, updates):
                 await send_message(session, chat_id, "❌ Failed to download the file.")
     return last_update_id
 
+
 async def async_main():
     """
     Main function to start the bot, poll for updates, and process them.
@@ -181,8 +200,7 @@ async def async_main():
     async with aiohttp.ClientSession() as session:
         logging.info("🤖 Bot is running...")
         if OWNER_ID:
-            await send_message(session, OWNER_ID, "🤖 Bot is starting up..."
-                               )        
+            await send_message(session, OWNER_ID, "🤖 Bot is starting up...")
 
         while True:
             try:
@@ -191,6 +209,7 @@ async def async_main():
                     last_update_id = await process_updates(session, updates)
                     if last_update_id:
                         offset = last_update_id + 1
+
                 await asyncio.sleep(1)
             except Exception as e:
                 logging.error(f"Polling error: {e}")
