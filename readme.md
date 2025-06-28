@@ -24,7 +24,7 @@ A **Python-based Telegram bot** that allows users to **send media files (videos,
 
 ### **1️⃣ Clone the Repository**
 ```sh
-git clone https://github.com/YOUR_USERNAME/telegram-bot-downloader.git
+git clone https://github.com/eranp22/telegram-bot-downloader.git
 cd telegram-bot-downloader
 ```
 
