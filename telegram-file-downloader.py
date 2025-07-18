@@ -68,7 +68,7 @@ def set_file_permissions(file_path):
     """
     try:
         os.chmod(file_path, stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IROTH)
-        logging.info(f"🔒 Permissions set to 644 for: {file_path}")
+        logging.info(f"🔒 Permissions successfully set to 644 for: {file_path}")
     except Exception as e:
         logging.error(f"❌ Failed to set permissions for {file_path}: {e}")
 
@@ -141,15 +141,15 @@ async def download_file(session, file_id):
                         break
                     f.write(chunk)
         
+        # Log successful download
+        logging.info(f"✅ File downloaded successfully: {local_filename}")
+
         # Set file permissions after download
         set_file_permissions(local_filename)
 
-        logging.info(f"✅ Downloaded: {local_filename}")
         if OWNER_ID:
             await send_message(session, OWNER_ID, f"✅ File downloaded: {local_filename}")
         
-        # Move the file to volume source after download
-
         return local_filename
     except aiohttp.ClientError as e:
         logging.error(f"❌ Network error while downloading file: {e}")
