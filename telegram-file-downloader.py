@@ -4,6 +4,7 @@ import asyncio
 import aiohttp
 import shutil  # Import shutil for file moving
 from dotenv import load_dotenv
+import stat  # Import stat for chmod
 
 # Load environment variables
 load_dotenv()
@@ -128,6 +129,11 @@ async def download_file(session, file_id):
                     if not chunk:
                         break
                     f.write(chunk)
+        
+        # Change file permissions to chmod 644
+        os.chmod(local_filename, stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IROTH)
+        logging.info(f"🔒 Permissions set to 644 for: {local_filename}")
+
         logging.info(f"✅ Downloaded: {local_filename}")
         if OWNER_ID:
             await send_message(session, OWNER_ID, f"✅ File downloaded: {local_filename}")
