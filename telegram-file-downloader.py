@@ -62,6 +62,17 @@ async def get_file_info(session, file_id):
         return None
 
 
+def set_file_permissions(file_path):
+    """
+    Set file permissions to chmod 644 (rw-r--r--).
+    """
+    try:
+        os.chmod(file_path, stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IROTH)
+        logging.info(f"🔒 Permissions set to 644 for: {file_path}")
+    except Exception as e:
+        logging.error(f"❌ Failed to set permissions for {file_path}: {e}")
+
+
 async def download_file(session, file_id):
     """
     Download a file from the Telegram Bot API using the file path.
@@ -130,9 +141,8 @@ async def download_file(session, file_id):
                         break
                     f.write(chunk)
         
-        # Change file permissions to chmod 644
-        os.chmod(local_filename, 0o644)
-        logging.info(f"🔒 Permissions set to 644 for: {local_filename}")
+        # Set file permissions after download
+        set_file_permissions(local_filename)
 
         logging.info(f"✅ Downloaded: {local_filename}")
         if OWNER_ID:
