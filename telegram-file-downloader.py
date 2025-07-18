@@ -131,7 +131,7 @@ async def download_file(session, file_id):
                     f.write(chunk)
         
         # Change file permissions to chmod 644
-        os.chmod(local_filename, stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IROTH)
+        os.chmod(local_filename, 0o644)
         logging.info(f"🔒 Permissions set to 644 for: {local_filename}")
 
         logging.info(f"✅ Downloaded: {local_filename}")
